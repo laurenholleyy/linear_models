@@ -21163,3 +21163,40 @@ nyc_airbnb |>
     ## (`stat_ydensity()`).
 
 <img src="01_linear_models_files/figure-gfm/unnamed-chunk-9-2.png" alt="" width="90%" />
+
+## Hypothesis testing
+
+Single
+
+``` r
+broom::tidy(fit) |>
+  mutate(term = str_replace(term, "borough", "Borough: ")) |>
+  knitr::kable(digits = 3)
+```
+
+| term              | estimate | std.error | statistic | p.value |
+|:------------------|---------:|----------:|----------:|--------:|
+| (Intercept)       |   19.839 |    12.189 |     1.628 |   0.104 |
+| stars             |   31.990 |     2.527 |    12.657 |   0.000 |
+| Borough: Brooklyn |  -49.754 |     2.235 |   -22.262 |   0.000 |
+| Borough: Queens   |  -77.048 |     3.727 |   -20.675 |   0.000 |
+| Borough: Bronx    |  -90.254 |     8.567 |   -10.534 |   0.000 |
+
+Try testing nested models
+
+``` r
+fit_null = lm(price ~ stars, data = nyc_airbnb)
+fit_alt = lm(price ~ stars + borough, data = nyc_airbnb)
+
+anova(fit_null, fit_alt)
+```
+
+    ## Analysis of Variance Table
+    ## 
+    ## Model 1: price ~ stars
+    ## Model 2: price ~ stars + borough
+    ##   Res.Df        RSS Df Sum of Sq      F    Pr(>F)    
+    ## 1  30528 1030861841                                  
+    ## 2  30525 1005601724  3  25260117 255.59 < 2.2e-16 ***
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1

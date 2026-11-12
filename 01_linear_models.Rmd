@@ -113,3 +113,22 @@ nyc_airbnb |>
   geom_violin()
 ```
 
+## Hypothesis testing
+
+Single 
+
+```{r}
+broom::tidy(fit) |>
+  mutate(term = str_replace(term, "borough", "Borough: ")) |>
+  knitr::kable(digits = 3)
+```
+
+Try testing nested models
+
+```{r}
+fit_null = lm(price ~ stars, data = nyc_airbnb)
+fit_alt = lm(price ~ stars + borough, data = nyc_airbnb)
+
+anova(fit_null, fit_alt)
+```
+
