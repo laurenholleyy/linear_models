@@ -54,7 +54,7 @@ fit = lm(price ~ stars + borough, data = nyc_airbnb)
 
 Look at what we have
 
-```{r}
+```{r message=FALSE, include=FALSE}
 fit
 summary(fit)
 coef(fit)
@@ -130,5 +130,74 @@ fit_null = lm(price ~ stars, data = nyc_airbnb)
 fit_alt = lm(price ~ stars + borough, data = nyc_airbnb)
 
 anova(fit_null, fit_alt)
+```
+
+## Nesting data
+
+Try a more complicated model
+
+`*` = checking if there's an interaction
+
+```{r}
+nyc_airbnb |>
+  lm(price ~ stars * borough + room_type * borough, data = _) |>
+  broom::tidy() |>
+  knitr::kable(digits = 3)
+```
+
+What if I want to know what's happening in manhattan?
+
+```{r}
+nyc_airbnb |>
+  filter(borough == "Manhattan") |>
+  lm(price ~ stars + room_type, data = _) |>
+  broom::tidy()
+
+nyc_airbnb |>
+  filter(borough == "Bronx") |>
+  lm(price ~ stars + room_type, data = _) |>
+  broom::tidy()
+```
+
+Let's fix this with iteration
+
+```{r}
+airbnb_lm = function(data) {
+  
+    lm(price ~ stars + room_type, data = data)
+
+}
+```
+
+```{r}
+nyc_airbnb |>
+  nest(datasets = -borough) |>
+  mutate(
+    fits = map(datasets, airbnb_lm),
+    results = map(fits, broom::tidy)
+  ) |>
+  select(-datasets, -fits) |>
+  unnest(results) |>
+  select(borough, term, estimate) |>
+  pivot_wider(
+    names_from = term,
+    values_from = estimate
+  )
+```
+
+```{r}
+nyc_airbnb |>
+  filter(borough == "Manhattan") |>
+  nest(datasets = -neighborhood) |>
+  mutate(
+    fits = map(datasets, \(df) lm(price ~ stars + room_type, data = df)),
+    results = map(fits, broom::tidy)
+  ) |>
+  select(neighborhood, results) |>
+  unnest(results) |>
+  filter(term == "room_typePrivate room") |>
+  ggplot(aes(x = neighborhood, y = estimate)) +
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 80, hjust = 1))
 ```
 
