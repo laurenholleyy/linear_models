@@ -89,18 +89,97 @@ Do a model comparison!
 rmse(linear_mod, test_df)
 ```
 
-    ## [1] 0.129309
+    ## [1] 0.1211799
 
 ``` r
 rmse(smooth_mod, test_df)
 ```
 
-    ## [1] 0.05994428
+    ## [1] 0.07114883
 
 ``` r
 rmse(wiggly_mod, test_df)
 ```
 
-    ## [1] 0.06833535
+    ## [1] 0.08034146
 
-- Higher `rmse` returned are better fit
+- Lower `rmse` returned are better fit
+
+## Repeat a bunch of times
+
+Use some nice tools woo
+
+``` r
+cv_df =
+  crossv_mc(lidar_df, 100)
+
+cv_df |> pull(train) |> nth(2) |> as_tibble()
+```
+
+    ## # A tibble: 176 × 3
+    ##       id range logratio
+    ##    <int> <dbl>    <dbl>
+    ##  1     1   390  -0.0504
+    ##  2     2   391  -0.0601
+    ##  3     4   394  -0.0510
+    ##  4     5   396  -0.0599
+    ##  5     6   397  -0.0284
+    ##  6     7   399  -0.0596
+    ##  7     8   400  -0.0399
+    ##  8     9   402  -0.0294
+    ##  9    11   405  -0.0476
+    ## 10    12   406  -0.0604
+    ## # ℹ 166 more rows
+
+``` r
+cv_df = 
+  crossv_mc(lidar_df, 100) |>
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble)
+  )
+```
+
+Fitting models and get rmses for these.
+
+``` r
+rmse_comp = function(model, dataset) {
+  
+  rmse(model, dataset)
+  
+}
+```
+
+``` r
+cv_df = 
+  cv_df |>
+  mutate(
+    linear_fit = map(train, \(df) lm(logratio ~ range, data = df)),
+    smooth_fit = map(train, \(df) gam(logratio ~ s(range), data = df)),
+    wiggly_fit = map(train, \(df) gam(logratio ~ s(range, k = 30), sp = 10e-6, data = df))
+  ) |>
+  mutate(
+    rmse_linear = map2_dbl(linear_fit, test, rmse),
+    rmse_smooth = map2_dbl(smooth_fit, test, rmse),
+    rmse_wiggly = map2_dbl(wiggly_fit, test, rmse)
+  )
+```
+
+- Figure out what an anonymous function is (`\(df)`)
+
+Look at this!
+
+``` r
+cv_df |>
+  select(starts_with("rmse_")) |>
+  pivot_longer(
+    everything(),
+    names_to = "model",
+    names_prefix = "rmse_",
+    values_to = "rmse"
+  ) |>
+  ggplot(aes(x = model, y = rmse)) +
+  geom_violin()
+```
+
+![](02_cross_validation_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->

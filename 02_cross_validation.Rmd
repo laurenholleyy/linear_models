@@ -78,5 +78,67 @@ rmse(smooth_mod, test_df)
 rmse(wiggly_mod, test_df)
 ```
 
-* Higher `rmse` returned are better fit
+* Lower `rmse` returned are better fit
+
+## Repeat a bunch of times
+
+Use some nice tools woo
+
+```{r}
+cv_df =
+  crossv_mc(lidar_df, 100)
+
+cv_df |> pull(train) |> nth(2) |> as_tibble()
+```
+
+```{r}
+cv_df = 
+  crossv_mc(lidar_df, 100) |>
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble)
+  )
+```
+
+Fitting models and get rmses for these.
+
+```{r}
+rmse_comp = function(model, dataset) {
+  
+  rmse(model, dataset)
+  
+}
+```
+
+```{r}
+cv_df = 
+  cv_df |>
+  mutate(
+    linear_fit = map(train, \(df) lm(logratio ~ range, data = df)),
+    smooth_fit = map(train, \(df) gam(logratio ~ s(range), data = df)),
+    wiggly_fit = map(train, \(df) gam(logratio ~ s(range, k = 30), sp = 10e-6, data = df))
+  ) |>
+  mutate(
+    rmse_linear = map2_dbl(linear_fit, test, rmse),
+    rmse_smooth = map2_dbl(smooth_fit, test, rmse),
+    rmse_wiggly = map2_dbl(wiggly_fit, test, rmse)
+  )
+```
+
+* Figure out what an anonymous function is (`\(df)`)
+
+Look at this!
+
+```{r}
+cv_df |>
+  select(starts_with("rmse_")) |>
+  pivot_longer(
+    everything(),
+    names_to = "model",
+    names_prefix = "rmse_",
+    values_to = "rmse"
+  ) |>
+  ggplot(aes(x = model, y = rmse)) +
+  geom_violin()
+```
 
