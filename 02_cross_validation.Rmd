@@ -1,0 +1,82 @@
+---
+title: "Cross Validation"
+output: github_document
+---
+
+```{r message=FALSE}
+library(tidyverse)
+library(p8105.datasets)
+library(modelr)
+library(mgcv)
+```
+
+* In model fitting, we want consistent predictions but nothing too simple - something medium complexity is important for the best prediction accuracy. 
+
+* Random split data into training data (build model) and testing data (out of sample fit). Can be around 80/20 ratio (use root mean squared error to measure).
+
+* So in general, helps you choose between models of varying complexity. Can be built into programs.
+
+## LIDAR Data 
+
+```{r}
+data("lidar")
+
+lidar_df =
+  lidar |>
+  mutate(id = row_number()) |>
+  select(id, everything())
+
+lidar_df |>
+  ggplot(aes(x = range, y = logratio)) +
+  geom_point()
+```
+
+Mutate added the new column named `id` with values that are the row numbers. `select` changes order so `id` is first from the left in the df.
+
+Build training and testing datasets.
+
+```{r}
+train_df = sample_frac(lidar_df, size = 0.8)
+test_df = anti_join(lidar_df, train_df, by = "id")
+```
+
+`size = 0.8` is the 80% fraction of the data that we're sampling. `test_df` term removes everything not in `train_df`. 
+
+```{r}
+ggplot(train_df, aes(x = range, y = logratio)) +
+  geom_point() +
+  geom_point(data = test_df, color = "red")
+```
+
+Overlaying the two datasets, training versus testing distinction.
+
+Fit some models.
+
+```{r}
+linear_mod = lm(logratio ~ range, data = train_df)
+smooth_mod = gam(logratio ~ s(range), data = train_df)
+wiggly_mod = gam(logratio ~ s(range,  k = 30), sp = 10e-6, data = train_df)
+```
+
+Make a plot
+
+```{r}
+train_df |>
+  add_predictions(wiggly_mod) |>
+  ggplot(aes(x = range, y = logratio)) +
+  geom_point() +
+  geom_line(aes(y = pred), color = "red")
+```
+
+Adding predictions (fitted values) from linear model to training df and then adding linear fit line/smooth model fit line. 
+
+Do a model comparison!
+
+```{r}
+rmse(linear_mod, test_df)
+rmse(smooth_mod, test_df)
+rmse(wiggly_mod, test_df)
+```
+
+* Higher `rmse` returned are better fit
+
