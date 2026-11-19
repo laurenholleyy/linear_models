@@ -93,13 +93,12 @@ boot_strap_df =
     strap_sample = map(strap_number, \(i) boot_sample(sim_df_nonconst)),
     model_fit = map(strap_sample, \(df) lm(y ~ x, data = df)),
     results = map(model_fit, broom::tidy)
-  ) |>
-  select(strap_number, results) |>
-  unnest(results)
+  ) 
 ```
 
 ```{r}
 boot_strap_df |>
+  unnest(results) |>
   group_by(term) |>
   summarize(
     mean_est = mean(estimate),
@@ -187,4 +186,13 @@ nyc_airbnb |>
 ```
 
 Go back to his class notes! Did things slightly differently. 
+
+CI for stars slope
+
+```{r}
+airbnb_bootstrap_df |>
+  select(results) |>
+  unnest(results)
+```
+
 
