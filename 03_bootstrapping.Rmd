@@ -124,3 +124,67 @@ boot_straps =
   modelr::bootstrap(n = 1000)
 ```
 
+## AirBnb
+
+```{r}
+data("nyc_airbnb")
+
+nyc_airbnb = nyc_airbnb |>
+  mutate(
+    stars = review_scores_location / 2
+  ) |>
+  rename(
+    borough = neighbourhood_group,
+    neighborhood = neighbourhood
+  ) |>
+  filter(borough != "Staten Island") |>
+  drop_na(price, stars) |>
+  select(price, stars, borough, neighborhood, room_type)
+```
+
+```{r}
+nyc_airbnb |>
+  ggplot(aes(x = stars, y = price, color = room_type)) +
+  geom_point()
+```
+
+Boot strap!
+
+```{r}
+airbnb_bootstrap_df =
+  nyc_airbnb |>
+  filter(borough == "Manhattan") |>
+  modelr::bootstrap(n = 1000) |>
+  mutate(
+    model_fits = map(strap, \(df) lm(price ~ stars + room_type, data = df)),
+    results = map(model_fits, broom::tidy)
+  )
+```
+
+Are these coefficients close enough to Normal that i can trust default inference?
+
+```{r}
+airbnb_bootstrap_df |>
+  select(results) |>
+  unnest(results) |>
+  filter(term == "stars") |>
+  ggplot(aes(x = estimate)) +
+  geom_density()
+```
+
+
+```{r}
+nyc_airbnb |> 
+  filter(borough == "Manhattan") |> 
+  modelr::bootstrap(n = 1000) |> 
+  mutate(
+    models = map(strap, \(df) lm(price ~ stars + room_type, data = df)),
+    results = map(models, broom::tidy)) |> 
+  select(results) |> 
+  unnest(results) |> 
+  filter(term == "stars") |> 
+  ggplot(aes(x = estimate)) + geom_density()
+```
+
+Go back to his class notes! Did things slightly differently. 
+
